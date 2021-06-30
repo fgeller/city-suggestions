@@ -38,7 +38,8 @@ func TestNoMatch(t *testing.T) {
 	require.Nil(t, err, "should process request cleanly")
 	defer resp.Body.Close()
 
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode, "should receive OK status code")
+	require.Equal(t, contentTypeJSON, resp.Header.Get("Content-Type"), "should set content-type")
 
 	bd, err := io.ReadAll(resp.Body)
 	require.Nil(t, err, "should be able to read response body")

@@ -60,5 +60,9 @@ func main() {
 		log.Fatalf("failed to read flags err=%v", err)
 	}
 
-	fmt.Printf("config: %#v\n", cfg)
+	srv := newServer(cfg.Addr)
+	err = srv.start()
+	if err != nil {
+		log.Printf("server start failed err=%v", err)
+	}
 }
