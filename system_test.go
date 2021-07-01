@@ -8,33 +8,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
-
-func awaitStartup(t *testing.T, url string, ctx context.Context) {
-	tick := time.NewTicker(5 * time.Millisecond)
-	defer tick.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			t.Error("startup timed out")
-			return
-		case <-tick.C:
-			_, err := http.Get(url)
-			if err == nil {
-				return
-			}
-		}
-	}
-}
 
 func TestNoMatch(t *testing.T) {
 	build(t)
@@ -120,6 +100,24 @@ func TestQueryWok(t *testing.T) {
 	require.JSONEq(t, expectedBody, string(bd), "should return properly formatted JSON")
 }
 
+func awaitStartup(t *testing.T, url string, ctx context.Context) {
+	tick := time.NewTicker(5 * time.Millisecond)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			t.Error("startup timed out")
+			return
+		case <-tick.C:
+			_, err := http.Get(url)
+			if err == nil {
+				return
+			}
+		}
+	}
+}
+
 func build(t *testing.T) {
 	var status int
 
@@ -131,51 +129,15 @@ func build(t *testing.T) {
 }
 
 type command struct {
-	in  string
 	cmd *exec.Cmd
-	br  *blockingReader
 }
 
 func newCommand() *command {
 	return &command{}
 }
 
-func (c *command) stdIn(in string) *command {
-	c.in = in
-	return c
-}
-
-type blockingReader struct {
-	data    []byte
-	release chan struct{}
-}
-
-func (r *blockingReader) Read(p []byte) (int, error) {
-	if len(r.data) > 0 {
-		var c int
-		for ; c < len(p) && c < len(r.data); c++ {
-			p[c] = r.data[c]
-		}
-		r.data = r.data[c:]
-		return c, nil
-	}
-
-	<-r.release
-	return 0, nil
-}
-
-func (c *command) blockStdIn(br *blockingReader) *command {
-	c.br = br
-	return c
-}
-
 func (c *command) start(name string, args ...string) error {
 	c.cmd = exec.Command(name, args...)
-	if len(c.in) > 0 {
-		c.cmd.Stdin = strings.NewReader(c.in)
-	} else if c.br != nil {
-		c.cmd.Stdin = c.br
-	}
 
 	errPipe, err := c.cmd.StderrPipe()
 	if err != nil {
@@ -216,19 +178,12 @@ func (c *command) start(name string, args ...string) error {
 
 	return c.cmd.Start()
 }
-
 func (c *command) run(name string, args ...string) (int, string, string) {
 	c.cmd = exec.Command(name, args...)
 
 	var stdOut, stdErr bytes.Buffer
 	c.cmd.Stdout = &stdOut
 	c.cmd.Stderr = &stdErr
-
-	if len(c.in) > 0 {
-		c.cmd.Stdin = strings.NewReader(c.in)
-	} else if c.br != nil {
-		c.cmd.Stdin = c.br
-	}
 
 	_ = c.cmd.Run()
 	status := c.cmd.ProcessState.Sys().(syscall.WaitStatus)
@@ -237,8 +192,4 @@ func (c *command) run(name string, args ...string) (int, string, string) {
 	strErr := stdErr.String()
 
 	return status.ExitStatus(), strOut, strErr
-}
-
-func (c *command) signal(sig os.Signal) error {
-	return c.cmd.Process.Signal(sig)
 }
