@@ -19,8 +19,6 @@ const (
 	countryCodeGB = "GB"
 
 	csvIndexName           = 1
-	csvIndexASCIIName      = 2
-	csvIndexAlternateNames = 3
 	csvIndexLatitude       = 4
 	csvIndexLongitude      = 5
 	csvIndexCountryCode    = 8
