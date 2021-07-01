@@ -13,3 +13,13 @@ test: build
 
 clean:
 	rm -fv ${ARTIFACT}
+
+release-linux:
+	GOOS=linux $(MAKE) build
+	tar Jcf ${ARTIFACT}-`git describe --abbrev=0 --tags`-linux-amd64.txz ${ARTIFACT}
+
+release-darwin:
+	GOOS=darwin $(MAKE) build
+	tar Jcf ${ARTIFACT}-`git describe --abbrev=0 --tags`-darwin-amd64.txz ${ARTIFACT}
+
+release: test clean release-linux release-darwin
