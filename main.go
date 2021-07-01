@@ -8,7 +8,8 @@ import (
 )
 
 type config struct {
-	Addr string
+	Addr         string
+	DataFilePath string
 }
 
 func readFlags() (*config, error) {
@@ -17,6 +18,7 @@ func readFlags() (*config, error) {
 
 	flags := flag.NewFlagSet("city-suggestions", flag.ExitOnError)
 	flags.StringVar(&cfg.Addr, "addr", "0.0.0.0:7182", "Address to listen to.")
+	flags.StringVar(&cfg.DataFilePath, "data-file-path", "data/cities.csv", "CSV containing city data.")
 	flags.Usage = func() {
 		fmt.Fprintf(flags.Output(), "Usage of city-suggestions:\n\n")
 		flags.PrintDefaults()
@@ -60,7 +62,12 @@ func main() {
 		log.Fatalf("failed to read flags err=%v", err)
 	}
 
-	srv := newServer(cfg.Addr)
+	sg, err := newSuggester(cfg.DataFilePath)
+	if err != nil {
+		log.Fatalf("failed to setup suggester err=%v", err)
+	}
+
+	srv := newServer(cfg.Addr, sg)
 	err = srv.start()
 	if err != nil {
 		log.Printf("server start failed err=%v", err)

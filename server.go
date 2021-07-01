@@ -13,12 +13,14 @@ const (
 )
 
 type server struct {
-	addr string
+	addr      string
+	suggester *suggester
 }
 
-func newServer(addr string) *server {
+func newServer(addr string, sug *suggester) *server {
 	return &server{
-		addr: addr,
+		addr:      addr,
+		suggester: sug,
 	}
 }
 
@@ -40,9 +42,22 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	q := r.URL.Query().Get("q")
+	lat := r.URL.Query().Get("latitude")
+	lon := r.URL.Query().Get("longitude")
+	log.Printf("serving request with params q=%#v lat=%#v lon=%#v", q, lat, lon)
+
+	ms, err := s.suggester.Match(q, lat, lon)
+	if err != nil {
+		log.Printf("failed to find suggestions err=%v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", contentTypeJSON)
-	sr := newSuggestionsResponse()
-	err := json.NewEncoder(w).Encode(sr)
+
+	sr := &SuggestionsResponse{Suggestions: ms}
+	err = json.NewEncoder(w).Encode(sr)
 	if err != nil {
 		log.Printf("failed to encode response err=%v", err)
 		w.WriteHeader(http.StatusInternalServerError)

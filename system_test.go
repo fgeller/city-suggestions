@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -17,7 +18,60 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func awaitStartup(t *testing.T, url string, ctx context.Context) {
+	tick := time.NewTicker(25 * time.Millisecond)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			t.Error("startup timed out")
+			return
+		case <-tick.C:
+			_, err := http.Get(url)
+			if err != nil {
+				return
+			}
+		}
+	}
+}
+
 func TestNoMatch(t *testing.T) {
+	build(t)
+
+	addr := "0.0.0.0:7183"
+
+	cmd := newCommand()
+	err := cmd.start("./city-suggestions", "--addr", addr)
+	require.Nil(t, err, "should start cleanly")
+
+	url := url.URL{
+		Scheme:   "http",
+		Host:     addr,
+		Path:     "suggestions",
+		RawQuery: "q=SomeCityInTheMiddleOfNowhere",
+	}
+
+	timeout, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	awaitStartup(t, url.String(), timeout)
+
+	time.Sleep(50 * time.Millisecond)
+
+	resp, err := http.Get(url.String())
+	require.Nil(t, err, "should process request cleanly")
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode, "should receive OK status code")
+	require.Equal(t, contentTypeJSON, resp.Header.Get("Content-Type"), "should set content-type")
+
+	bd, err := io.ReadAll(resp.Body)
+	require.Nil(t, err, "should be able to read response body")
+	require.JSONEq(t, `{"suggestions":[]}`, string(bd), "should return properly formatted JSON")
+}
+
+func TestQueryWok(t *testing.T) {
 	build(t)
 
 	addr := "0.0.0.0:7183"
@@ -32,7 +86,7 @@ func TestNoMatch(t *testing.T) {
 		Scheme:   "http",
 		Host:     addr,
 		Path:     "suggestions",
-		RawQuery: "q=SomeCityInTheMiddleOfNowhere",
+		RawQuery: "q=Wok&latitude=43.70011&longitude=-79.4163",
 	}
 	resp, err := http.Get(url.String())
 	require.Nil(t, err, "should process request cleanly")
@@ -43,7 +97,25 @@ func TestNoMatch(t *testing.T) {
 
 	bd, err := io.ReadAll(resp.Body)
 	require.Nil(t, err, "should be able to read response body")
-	require.JSONEq(t, `{"suggestions":[]}`, string(bd), "should return properly formatted JSON")
+	expectedBody := `
+{
+  "suggestions": [
+    {
+      "name": "Wokingham",
+      "latitude": "51.41120",
+      "longitude": "-0.83565",
+      "score": 0.9222222222222222
+    },
+    {
+      "name": "Woking",
+      "latitude": "51.31903",
+      "longitude": "-0.55893",
+      "score": 0.4416666666666667
+    }
+  ]
+}
+`
+	require.JSONEq(t, expectedBody, string(bd), "should return properly formatted JSON")
 }
 
 func build(t *testing.T) {
