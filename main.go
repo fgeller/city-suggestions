@@ -71,6 +71,7 @@ func main() {
 	}
 
 	srv := newServer(cfg.Addr, sg)
+	log.Printf("starting server addr=%#v", cfg.Addr)
 	err = srv.start()
 	if err != nil {
 		log.Printf("server start failed err=%v", err)
