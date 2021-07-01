@@ -1,4 +1,4 @@
-module github.com/fgeller/bezero-test
+module github.com/fgeller/city-suggestions
 
 go 1.16
 
