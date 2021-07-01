@@ -17,7 +17,7 @@ make build
 
 ## Usage
 
-```sh
+```
 $ ./city-suggestions --help
 Usage of city-suggestions:
 
@@ -69,6 +69,6 @@ The service expects that the following data is stored at the given index (zero b
 Th service includes black box tests that include testing the build process and
 starting the binary. You can run them via
 
-```
+```sh
 make test
 ```
