@@ -25,23 +25,26 @@ func readFlags() (*config, error) {
 		help := `
 city-suggestions will serve GET HTTP requests on the set address where the query
 is an URL parameter named "q" and a location can be passed via the "langitude" and
-"longitude" URL parameters. It returns a JSON objects that looks like the following
-example:
+"longitude" URL parameters. For example, given a GET request like:
+
+GET /suggestions?q=Wok&latitude=43.70011&longitude=-79.4163
+
+It returns a JSON object in the body that looks similar to the following:
 
 {
   "suggestions": [
     {
       "name": "Wokingham",
-      "latitude": "51.4112",
+      "latitude": "51.41120",
       "longitude": "-0.83565",
-      "score": 0.8
+      "score": 0.9222222222222222
     },
     {
       "name": "Woking",
       "latitude": "51.31903",
       "longitude": "-0.55893",
-      "score": 0.6
-    },
+      "score": 0.4416666666666667
+    }
   ]
 }
 `
