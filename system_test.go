@@ -19,7 +19,7 @@ import (
 )
 
 func awaitStartup(t *testing.T, url string, ctx context.Context) {
-	tick := time.NewTicker(25 * time.Millisecond)
+	tick := time.NewTicker(5 * time.Millisecond)
 	defer tick.Stop()
 
 	for {
@@ -29,7 +29,7 @@ func awaitStartup(t *testing.T, url string, ctx context.Context) {
 			return
 		case <-tick.C:
 			_, err := http.Get(url)
-			if err != nil {
+			if err == nil {
 				return
 			}
 		}
@@ -55,9 +55,7 @@ func TestNoMatch(t *testing.T) {
 	timeout, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	awaitStartup(t, url.String(), timeout)
-
-	time.Sleep(50 * time.Millisecond)
+	awaitStartup(t, fmt.Sprintf("http://%v", addr), timeout)
 
 	resp, err := http.Get(url.String())
 	require.Nil(t, err, "should process request cleanly")
@@ -80,14 +78,18 @@ func TestQueryWok(t *testing.T) {
 	err := cmd.start("./city-suggestions", "--addr", addr)
 	require.Nil(t, err, "should start cleanly")
 
-	time.Sleep(20 * time.Millisecond)
-
 	url := url.URL{
 		Scheme:   "http",
 		Host:     addr,
 		Path:     "suggestions",
 		RawQuery: "q=Wok&latitude=43.70011&longitude=-79.4163",
 	}
+
+	timeout, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	awaitStartup(t, fmt.Sprintf("http://%v", addr), timeout)
+
 	resp, err := http.Get(url.String())
 	require.Nil(t, err, "should process request cleanly")
 	defer resp.Body.Close()
